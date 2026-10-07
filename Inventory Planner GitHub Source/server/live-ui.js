@@ -21,4 +21,4 @@ async function refreshLive(mode){
   $('#export-sync').hidden=mode!=='items';
  }catch(e){$('#sync-body').innerHTML='<div class="demo-banner"><b>Refresh could not complete</b></div><p>'+esc(e.message)+'</p><p>Your last complete report has been retained.</p>';}finally{clearInterval(progress);refreshing=false;$('#update-items').disabled=false;$('#refresh-data').disabled=false;}
 }
-liveMetadata();
+if(data.refreshedAt)liveMetadata();else{const s=document.querySelector('#page-subtitle');if(s)s.textContent='No NetSuite report yet. Click Refresh report to load one.'}
