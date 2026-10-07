@@ -1,4 +1,18 @@
-Inventory Planner — Team sign-in setup (Microsoft 365)
+Inventory Planner — Access setup
+
+OPTION A (current choice) — No in-app login; the hosting platform controls access
+Use this when the Replit deployment itself is password protected / private.
+1. Turn on the deployment's access protection in Replit first.
+2. In Replit > Secrets add:  PLANNER_ACCESS = host-protected
+3. Restart. The planner opens directly, no sign-in page. Open it in its own browser tab (the planner refuses to load inside another site's frame).
+4. Check it: open the app's address in a private/incognito window while signed out of Replit. You must be stopped by Replit's password page.
+   If the planner loads instead, delete PLANNER_ACCESS right away; anyone with the link could see inventory and run refreshes.
+The app only answers on its own Replit addresses (REPLIT_DOMAINS / REPLIT_DEV_DOMAIN, or APP_ORIGIN if set) and keeps its refresh CSRF and same-origin checks.
+Without PLANNER_ACCESS (and without Option B), the cloud app shows the lock page; it never runs open by default.
+
+OPTION B — Microsoft 365 sign-in built into the app (optional, for later)
+If the six settings below are present, Microsoft sign-in is used and PLANNER_ACCESS is ignored.
+
 
 What this adds
 - Every page and every /api endpoint requires a Loftwall Microsoft 365 sign-in AND an email on the approved-user list. Both are checked on the server on every request.
