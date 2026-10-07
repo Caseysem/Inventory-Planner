@@ -15,13 +15,18 @@ let busy=false,message='Ready';
 const json=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data))};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
 const page=(res,status,title,body,headers={})=>{res.writeHead(status,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Frame-Options':'DENY','X-Content-Type-Options':'nosniff',...headers});
- res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f6f7f4;color:#1e3238;display:grid;place-items:center;min-height:100vh;margin:0}main{background:#fff;border:1px solid #e2e7e4;border-radius:12px;padding:36px;max-width:440px}a.btn{display:inline-block;background:#17634f;color:#fff;padding:11px 18px;border-radius:7px;text-decoration:none;margin-top:8px}code{background:#f0f2ef;padding:1px 4px;border-radius:4px}</style></head><body><main><h1>${esc(title)}</h1>${body}</main></body></html>`)};
+ res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex, nofollow, noarchive, nosnippet"><title>${esc(title)}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f6f7f4;color:#1e3238;display:grid;place-items:center;min-height:100vh;margin:0}main{background:#fff;border:1px solid #e2e7e4;border-radius:12px;padding:36px;max-width:440px}a.btn{display:inline-block;background:#17634f;color:#fff;padding:11px 18px;border-radius:7px;text-decoration:none;margin-top:8px}code{background:#f0f2ef;padding:1px 4px;border-radius:4px}</style></head><body><main><h1>${esc(title)}</h1>${body}</main></body></html>`)};
 const securityHeaders={'X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'",'X-Content-Type-Options':'nosniff'};
 const userBar=u=>`<div style="position:fixed;right:16px;bottom:12px;z-index:9;font:12px -apple-system,sans-serif;background:#fff;border:1px solid #e2e7e4;border-radius:7px;padding:6px 10px;color:#738083">${esc(u.email)} · <a href="/auth/logout" style="color:#17634f">Sign out</a></div>`;
 
 const server=http.createServer(async(req,res)=>{
+ res.setHeader('X-Robots-Tag','noindex, nofollow, noarchive, nosnippet');
  try{
   const url0=new URL(req.url,'http://x');
+  if(req.method==='GET'&&url0.pathname==='/robots.txt'){
+   res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
+   res.end(await readFile(root+'/public/robots.txt','utf8'));return;
+  }
   const loopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
   const onReplit=Boolean(process.env.REPL_ID||process.env.REPLIT_DEPLOYMENT||process.env.REPLIT_DOMAINS);
   const localMode=hostProtected||!auth.configured&&loopback&&!onReplit&&['127.0.0.1','localhost'].includes(new URL(origin).hostname);

@@ -35,6 +35,7 @@ outputType = "webview"
 deploymentTarget = "vm"
 build = ["sh", "-c", "cd 'Inventory Planner GitHub Source' && npm run build"]
 run = ["sh", "-c", "cd 'Inventory Planner GitHub Source' && PORT=5000 npm start"]
+ignorePorts = false
 
 [[ports]]
 localPort = 5000
