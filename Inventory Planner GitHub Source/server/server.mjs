@@ -21,14 +21,20 @@ const userBar=u=>`<div style="position:fixed;right:16px;bottom:12px;z-index:9;fo
 
 const server=http.createServer(async(req,res)=>{
  try{
+  const url0=new URL(req.url,'http://x');
   const loopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
   const onReplit=Boolean(process.env.REPL_ID||process.env.REPLIT_DEPLOYMENT||process.env.REPLIT_DOMAINS);
   const localMode=hostProtected||!auth.configured&&loopback&&!onReplit&&['127.0.0.1','localhost'].includes(new URL(origin).hostname);
   if(!auth.configured&&!localMode){
-   page(res,503,'Inventory Planner imported','<p>The application package is running. Cloud access to inventory is turned off until access control is set up.</p><p>If the hosting platform already protects this app (for example a password-protected Replit deployment), add the Secret <code>PLANNER_ACCESS</code> with the value <code>host-protected</code> and restart.</p><p>Or, for Microsoft 365 sign-in, add these Secrets: '+auth.missing.map(m=>'<code>'+esc(m)+'</code>').join(', ')+'</p>');return;
+   if(!(req.method==='GET'&&url0.pathname==='/')){json(res,503,{error:'Cloud access is not set up'});return}
+   page(res,200,'Inventory Planner imported','<p>The application package is running. Cloud access to inventory is turned off until access control is set up.</p><p>If the hosting platform already protects this app (for example a password-protected Replit deployment), add the Secret <code>PLANNER_ACCESS</code> with the value <code>host-protected</code> and restart.</p><p>Or, for Microsoft 365 sign-in, add these Secrets: '+auth.missing.map(m=>'<code>'+esc(m)+'</code>').join(', ')+'</p>');return;
   }
-  const reqOrigin=hostProtected&&allowedHosts.has(req.headers.host)?'https://'+req.headers.host:origin;
-  if(req.headers.host!==new URL(reqOrigin).host){json(res,403,{error:'Invalid host'});return}
+  const reqOrigin=hostProtected?(allowedHosts.has(req.headers.host)?'https://'+req.headers.host:null):origin;
+  if(!reqOrigin||req.headers.host!==new URL(reqOrigin).host){
+   // Hosting health checks may use another host name: answer the home page with a data-free 200, refuse everything else.
+   if(req.method==='GET'&&url0.pathname==='/'){page(res,200,'Inventory Planner','<p>Inventory Planner is running.</p>');return}
+   json(res,403,{error:'Invalid host'});return;
+  }
   const url=new URL(req.url,reqOrigin);
 
   let user=null,csrf=localCsrf;
@@ -45,7 +51,7 @@ const server=http.createServer(async(req,res)=>{
    if(req.method==='GET'&&url.pathname==='/signed-out'){page(res,200,'Signed out','<p>You have signed out of the Inventory Planner.</p><a class="btn" href="/auth/login">Sign in again</a>');return}
    user=currentUser(auth,req);
    if(!user){
-    if(req.method==='GET'&&url.pathname==='/'){page(res,401,'Inventory Planner','<p>Sign in with your Loftwall Microsoft 365 account to continue.</p><a class="btn" href="/auth/login">Sign in with Microsoft</a>');return}
+    if(req.method==='GET'&&url.pathname==='/'){page(res,200,'Inventory Planner','<p>Sign in with your Loftwall Microsoft 365 account to continue.</p><a class="btn" href="/auth/login">Sign in with Microsoft</a>');return}
     json(res,401,{error:'Sign in required'});return;
    }
    csrf=csrfFor(auth,user);

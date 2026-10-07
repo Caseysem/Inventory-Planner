@@ -31,6 +31,11 @@ waitForPort = 5000
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[deployment]
+deploymentTarget = "vm"
+build = ["sh", "-c", "cd 'Inventory Planner GitHub Source' && npm run build"]
+run = ["sh", "-c", "cd 'Inventory Planner GitHub Source' && PORT=5000 npm start"]
+
 [[ports]]
 localPort = 5000
 externalPort = 80
