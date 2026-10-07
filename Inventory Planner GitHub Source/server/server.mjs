@@ -4,12 +4,8 @@ import {authSettings,currentUser,csrfFor,beginLogin,finishLogin,signOutCookie} f
 
 const auth=authSettings();
 const port=Number(process.env.PORT||3000),host=process.env.HOST||'0.0.0.0',origin=auth.origin||`http://127.0.0.1:${port}`;
-// Local mode (no team sign-in configured): loopback only, one per-process session, exactly as before.
+// No in-app access gate: access to the published app is controlled by the hosting platform (Replit password protection).
 const localSession=randomBytes(32).toString('hex'),localCsrf=randomBytes(32).toString('hex');
-// Host-protected mode: PLANNER_ACCESS=host-protected says access is controlled by the hosting platform
-// (e.g. a password-protected Replit deployment), so no in-app sign-in is required. It must be set on purpose.
-const hostProtected=!auth.configured&&process.env.PLANNER_ACCESS==='host-protected';
-const allowedHosts=new Set([process.env.APP_ORIGIN&&new URL(process.env.APP_ORIGIN).host,process.env.REPLIT_DEV_DOMAIN,...(process.env.REPLIT_DOMAINS||'').split(',')].map(h=>h?.trim()).filter(Boolean));
 let busy=false,message='Ready';
 
 const json=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data))};
@@ -27,19 +23,12 @@ const server=http.createServer(async(req,res)=>{
    res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store'});
    res.end(await readFile(root+'/public/robots.txt','utf8'));return;
   }
+  if(!req.headers.host){json(res,400,{error:'Missing host'});return}
   const loopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
-  const onReplit=Boolean(process.env.REPL_ID||process.env.REPLIT_DEPLOYMENT||process.env.REPLIT_DOMAINS);
-  const localMode=hostProtected||!auth.configured&&loopback&&!onReplit&&['127.0.0.1','localhost'].includes(new URL(origin).hostname);
-  if(!auth.configured&&!localMode){
-   if(!(req.method==='GET'&&url0.pathname==='/')){json(res,503,{error:'Cloud access is not set up'});return}
-   page(res,200,'Inventory Planner imported','<p>The application package is running. Cloud access to inventory is turned off until access control is set up.</p><p>If the hosting platform already protects this app (for example a password-protected Replit deployment), add the Secret <code>PLANNER_ACCESS</code> with the value <code>host-protected</code> and restart.</p><p>Or, for Microsoft 365 sign-in, add these Secrets: '+auth.missing.map(m=>'<code>'+esc(m)+'</code>').join(', ')+'</p>');return;
-  }
-  const reqOrigin=hostProtected?(allowedHosts.has(req.headers.host)?'https://'+req.headers.host:null):origin;
-  if(!reqOrigin||req.headers.host!==new URL(reqOrigin).host){
-   // Hosting health checks may use another host name: answer the home page with a data-free 200, refuse everything else.
-   if(req.method==='GET'&&url0.pathname==='/'){page(res,200,'Inventory Planner','<p>Inventory Planner is running.</p>');return}
-   json(res,403,{error:'Invalid host'});return;
-  }
+  const proto=String(req.headers['x-forwarded-proto']||(loopback?'http':'https')).split(',')[0].trim();
+  // Optional Microsoft 365 sign-in (auth.mjs) applies only when its settings are present.
+  const reqOrigin=auth.configured?origin:proto+'://'+req.headers.host;
+  if(auth.configured&&req.headers.host!==new URL(origin).host){json(res,403,{error:'Invalid host'});return}
   const url=new URL(req.url,reqOrigin);
 
   let user=null,csrf=localCsrf;
@@ -64,7 +53,7 @@ const server=http.createServer(async(req,res)=>{
 
   if(req.method==='GET'&&url.pathname==='/'){
    const html=await readFile(root+'/server/live.html','utf8');
-   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',...securityHeaders,...(user?{}:{'Set-Cookie':`planner_session=${localSession}; HttpOnly; SameSite=Strict; Path=/${hostProtected?'; Secure':''}`})});
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',...securityHeaders,...(user?{}:{'Set-Cookie':`planner_session=${localSession}; HttpOnly; SameSite=Strict; Path=/${proto==='https'?'; Secure':''}`})});
    res.end(user?html.replace('</body>',userBar(user)+'</body>'):html);return;
   }
   if(!user&&!(req.headers.cookie||'').split(';').some(c=>c.trim()==='planner_session='+localSession)){json(res,403,{error:'Open the planner workspace first'});return}
@@ -83,4 +72,4 @@ const server=http.createServer(async(req,res)=>{
   json(res,404,{error:'Not found'});
  }catch(e){json(res,500,{error:e.code==='ENOENT'?'No successful report available yet':e.message})}
 });
-server.listen(port,host,()=>console.log('Inventory Planner: '+(hostProtected?'no in-app sign-in (PLANNER_ACCESS=host-protected; access controlled by the host) on '+([...allowedHosts].join(', ')||'no allowed hosts: set APP_ORIGIN'):origin+(auth.configured?' (Microsoft 365 sign-in, '+auth.approved.size+' approved users)':' (team sign-in not configured; cloud access blocked, loopback-only local mode. Missing: '+auth.missing.join(', ')+')'))));
+server.listen(port,host,()=>console.log('Inventory Planner on port '+port+(auth.configured?' (Microsoft 365 sign-in, '+auth.approved.size+' approved users)':' (no in-app sign-in; access controlled by the host)')));
