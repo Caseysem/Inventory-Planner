@@ -1,0 +1,35 @@
+Inventory Planner — Team sign-in setup (Microsoft 365)
+
+What this adds
+- Every page and every /api endpoint requires a Loftwall Microsoft 365 sign-in AND an email on the approved-user list. Both are checked on the server on every request.
+- Removing someone from APPROVED_USERS (then restarting the app) locks them out immediately, even if they were already signed in.
+- Sessions last 12 hours, are signed with SESSION_SECRET and use Secure, HttpOnly cookies. Refresh still requires the same-origin + CSRF check.
+- Until all six settings below are present, the app keeps showing the "Inventory Planner imported" lock page in the cloud, listing what is missing. It never runs open.
+- Running on your own computer with none of these settings keeps the original localhost-only behavior.
+
+Step 1 — Register the app in Microsoft Entra ID (your Microsoft 365 admin does this, about 10 minutes)
+1. Go to https://entra.microsoft.com > Applications > App registrations > New registration.
+2. Name: Loftwall Inventory Planner. Supported account types: "Accounts in this organizational directory only (Loftwall only - Single tenant)".
+3. Redirect URI: platform "Web", value  https://<your-replit-domain>/auth/callback
+   (the exact address shown in the Replit preview's address bar, plus /auth/callback; add the published domain too once you publish).
+4. Register. From the Overview page copy "Application (client) ID" and "Directory (tenant) ID".
+5. Certificates & secrets > New client secret. Copy the secret VALUE right away (it is shown once). Note its expiry date and put a renewal on someone's calendar.
+No extra API permissions are needed; the default sign-in permission (User.Read / openid) is enough.
+
+Step 2 — Add these in Replit > Tools > Secrets (never in code or in chat)
+  ENTRA_TENANT_ID      Directory (tenant) ID from step 1
+  ENTRA_CLIENT_ID      Application (client) ID from step 1
+  ENTRA_CLIENT_SECRET  Client secret value from step 1
+  SESSION_SECRET       A long random string, 32+ characters (e.g. run: openssl rand -hex 32 in the Replit Shell)
+  APPROVED_USERS       Comma-separated work emails, e.g. sean@loftwall.com, buyer@loftwall.com
+  APP_ORIGIN           https://<your-replit-domain>   (no trailing slash; must match the redirect URI host)
+
+Step 3 — Restart the app in Replit and open the preview in a new tab. You should see "Sign in with Microsoft".
+After signing in, the planner loads (empty until NetSuite is connected). Your email and a Sign out link show at the bottom right.
+
+Step 4 — Only after sign-in works: add the NetSuite read-only Secrets
+  NETSUITE_CLIENT_ID, NETSUITE_CERTIFICATE_ID, NETSUITE_PRIVATE_KEY_PEM
+then click Refresh report.
+
+Still to do before publishing for the whole team (see README.txt): move report storage from data/ files to a database,
+and coordinate the refresh lock if more than one app instance runs.
