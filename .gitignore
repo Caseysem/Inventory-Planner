@@ -1,0 +1,8 @@
+.pythonlibs/
+.upm/
+.cache/
+node_modules/
+__pycache__/
+*.py[cod]
+Inventory Planner GitHub Source/server/live.html
+Inventory Planner GitHub Source/server/live-check.js

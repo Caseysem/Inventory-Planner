@@ -1,7 +1,36 @@
-modules = ["nodejs-20", "web", "python-3.12"]
+modules = ["web", "python-3.12", "nodejs-22"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["libxcrypt", "pkg-config", "xsimd"]
 
 [agent]
 expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd 'Inventory Planner GitHub Source' && npm run build && PORT=5000 npm start"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
