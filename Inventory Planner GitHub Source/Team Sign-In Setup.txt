@@ -1,24 +1,19 @@
 Inventory Planner — Access setup
 
-OPTION A (current choice) — No in-app login; the hosting platform controls access
-Use this when the Replit deployment itself is password protected / private.
-1. Turn on the deployment's access protection in Replit first.
-2. In Replit > Secrets add:  PLANNER_ACCESS = host-protected
-3. Restart. The planner opens directly, no sign-in page. Open it in its own browser tab (the planner refuses to load inside another site's frame).
-4. Check it: open the app's address in a private/incognito window while signed out of Replit. You must be stopped by Replit's password page.
-   If the planner loads instead, delete PLANNER_ACCESS right away; anyone with the link could see inventory and run refreshes.
-The app only answers on its own Replit addresses (REPLIT_DOMAINS / REPLIT_DEV_DOMAIN, or APP_ORIGIN if set) and keeps its refresh CSRF and same-origin checks.
-Without PLANNER_ACCESS (and without Option B), the cloud app shows the lock page; it never runs open by default.
+OPTION A (current choice) — No in-app login; Replit controls access
+The app has no lock page and no login of its own. Anyone who can reach its address can use it, so keep the
+Replit deployment password protected / private. (The PLANNER_ACCESS setting is no longer needed.)
+Check: open the app's address in a private/incognito window while signed out of Replit; Replit's password page should appear.
+Refresh still only works when clicked from the planner page itself (CSRF and same-origin checks).
 
 OPTION B — Microsoft 365 sign-in built into the app (optional, for later)
-If the six settings below are present, Microsoft sign-in is used and PLANNER_ACCESS is ignored.
+If the six settings below are present, Microsoft sign-in is required on top of Replit's protection.
 
 
 What this adds
 - Every page and every /api endpoint requires a Loftwall Microsoft 365 sign-in AND an email on the approved-user list. Both are checked on the server on every request.
 - Removing someone from APPROVED_USERS (then restarting the app) locks them out immediately, even if they were already signed in.
 - Sessions last 12 hours, are signed with SESSION_SECRET and use Secure, HttpOnly cookies. Refresh still requires the same-origin + CSRF check.
-- Until all six settings below are present, the app keeps showing the "Inventory Planner imported" lock page in the cloud, listing what is missing. It never runs open.
 - Running on your own computer with none of these settings keeps the original localhost-only behavior.
 
 Step 1 — Register the app in Microsoft Entra ID (your Microsoft 365 admin does this, about 10 minutes)
