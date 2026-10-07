@@ -5,7 +5,7 @@ import {authSettings,currentUser,csrfFor,beginLogin,finishLogin,signOutCookie} f
 const auth=authSettings();
 const port=Number(process.env.PORT||3000),host=process.env.HOST||'0.0.0.0',origin=auth.origin||`http://127.0.0.1:${port}`;
 // No in-app access gate: access to the published app is controlled by the hosting platform (Replit password protection).
-const localSession=randomBytes(32).toString('hex'),localCsrf=randomBytes(32).toString('hex');
+const localCsrf=randomBytes(32).toString('hex');
 let busy=false,message='Ready';
 
 const json=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data))};
@@ -27,7 +27,7 @@ const server=http.createServer(async(req,res)=>{
   const loopback=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
   const proto=String(req.headers['x-forwarded-proto']||(loopback?'http':'https')).split(',')[0].trim();
   // Optional Microsoft 365 sign-in (auth.mjs) applies only when its settings are present.
-  const reqOrigin=auth.configured?origin:proto+'://'+req.headers.host;
+  const reqOrigin=auth.configured?origin:proto+'://'+String(req.headers['x-forwarded-host']||req.headers.host).split(',')[0].trim();
   if(auth.configured&&req.headers.host!==new URL(origin).host){json(res,403,{error:'Invalid host'});return}
   const url=new URL(req.url,reqOrigin);
 
@@ -53,10 +53,11 @@ const server=http.createServer(async(req,res)=>{
 
   if(req.method==='GET'&&url.pathname==='/'){
    const html=await readFile(root+'/server/live.html','utf8');
-   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',...securityHeaders,...(user?{}:{'Set-Cookie':`planner_session=${localSession}; HttpOnly; SameSite=Strict; Path=/${proto==='https'?'; Secure':''}`})});
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store',...securityHeaders});
    res.end(user?html.replace('</body>',userBar(user)+'</body>'):html);return;
   }
-  if(!user&&!(req.headers.cookie||'').split(';').some(c=>c.trim()==='planner_session='+localSession)){json(res,403,{error:'Open the planner workspace first'});return}
+  // Without Microsoft sign-in there is no per-browser session: the host controls access. Refresh still needs the
+  // CSRF token (readable only by same-origin pages) and a same-origin Origin header.
   if(req.headers.origin&&req.headers.origin!==reqOrigin){json(res,403,{error:'Invalid origin'});return}
   if(req.method==='GET'&&url.pathname==='/api/session'){json(res,200,{csrf,user:user?{email:user.email,name:user.name}:null});return}
   if(req.method==='GET'&&url.pathname==='/api/status'){json(res,200,{busy,message});return}
